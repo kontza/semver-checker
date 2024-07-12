@@ -1,10 +1,9 @@
 /*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2024 Juha Ruotsalaien <juha.ruotsalainen@iki.fi>
 */
 package main
 
-import "semver-testi/cmd"
+import "semver-checker/cmd"
 
 func main() {
 	cmd.Execute()

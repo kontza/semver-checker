@@ -1,4 +1,4 @@
-module semver-testi
+module semver-checker
 
 go 1.22.5
 

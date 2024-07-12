@@ -1,3 +1,6 @@
+/*
+Copyright © 2024 Juha Ruotsalaien <juha.ruotsalainen@iki.fi>
+*/
 package cmd
 
 import (
