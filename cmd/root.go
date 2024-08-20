@@ -1,5 +1,5 @@
 /*
-Copyright © 2024 Juha Ruotsalaien <juha.ruotsalainen@iki.fi>
+Copyright © 2024 Juha Ruotsalainen <juha.ruotsalainen@iki.fi>
 */
 package cmd
 

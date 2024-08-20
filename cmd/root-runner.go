@@ -1,18 +1,39 @@
 /*
-Copyright © 2024 Juha Ruotsalaien <juha.ruotsalainen@iki.fi>
+Copyright © 2024 Juha Ruotsalainen <juha.ruotsalainen@iki.fi>
 */
 package cmd
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 
+	"github.com/machinebox/graphql"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/mod/semver"
 )
+
+type Node struct {
+	Id      string
+	Name    string
+	Version string
+}
+
+type Packages struct {
+	Count int
+	Nodes []Node
+}
+
+type Project struct {
+	Id       string
+	Packages Packages
+}
+
+type GetPackagesResult struct {
+	Project Project
+}
 
 func rootRunner(cmd *cobra.Command, args []string) {
 	// versions := []string{"v3.4.0", "v3.11.0", "v4.0.0", "v3.7.0", "v3.8.0", "v3.9.0", "v3.10.0", "v3.12.0"}
@@ -26,25 +47,40 @@ func rootRunner(cmd *cobra.Command, args []string) {
 		Str("host", viper.GetString("host")).
 		Bool("token defined", tokenDefined).
 		Int("project", viper.GetInt("project")).Msg("Current config:")
-	req, err := http.NewRequest(
-		http.MethodGet,
-		fmt.Sprintf("%s/api/v4/projects/%s/packages?package_name=%s",
-			viper.GetString("host"),
-			viper.GetString("project"),
-			args[0]),
-		nil)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create a web request due to")
+
+	client := graphql.NewClient(fmt.Sprintf("%s/api/graphql", viper.GetString("host")))
+	req := graphql.NewRequest(`
+		query getPackages($fullPath: ID!, $packageName: String, $packageType: PackageTypeEnum, $first: Int, $sort: PackageSort) {
+			project(fullPath: $fullPath) {
+				id
+				packages( packageName: $packageName packageType: $packageType first: $first sort: $sort) {
+					count
+					nodes {
+						id
+						name
+						version
+					}
+				}
+			}
+		}`)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", viper.GetString("token")))
+	req.Var("fullPath", viper.GetString("project"))
+	req.Var("packageName", args[0])
+	req.Var("packageType", "GENERIC")
+	req.Var("first", 2112)
+	req.Var("sort", "CREATED_DESC")
+	ctx := context.Background()
+	var res GetPackagesResult
+	if err := client.Run(ctx, req, &res); err != nil {
+		log.Fatal().Err(err).Msg("Failed to query packages due to")
 	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", viper.GetString("token")))
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to make a web request due to")
+	log.Info().Interface("result", res).Msg("Received query")
+	versions := []string{}
+	for _, node := range res.Project.Packages.Nodes {
+		log.Info().Interface("node", node).Msg("Found")
+		versions = append(versions, fmt.Sprintf("v%s", node.Version))
 	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to read response body due to")
-	}
-	log.Info().Int("status code", resp.StatusCode).Int("body size", len(body)).Msg("Got response:")
-	log.Info().Bytes("body", body).Msg("Received")
+	log.Info().Strs("before", versions).Msg("Versions")
+	semver.Sort(versions)
+	log.Info().Strs("after", versions).Msg("Versions")
 }
