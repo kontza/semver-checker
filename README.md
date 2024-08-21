@@ -10,8 +10,14 @@ This application queries a Gitlab instance for a specific version of a generic p
     token: <ACCESS TOKEN WITH REGISTRY READ RIGHTS>
     project: <PATH GROUP/PROJECT WHERE PACKAGES ARE STORED>
     ```
-2. Build this app.
-3. Run this app with a package name & version to search for:
+2. Or, alternatively define the configuration parameters via environment variables:
+    ```sh
+    SEMCHK_HOST
+    SEMCHK_PROJECT
+    SEMCHK_TOKEN
+    ```
+4. Build this app.
+5. Run this app with a package name & version to search for:
     ```sh
     $ semver-checker package@1.0.0
     $ semver-checker package@latest
