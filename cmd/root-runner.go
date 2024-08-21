@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -35,18 +36,82 @@ type GetPackagesResult struct {
 	Project Project
 }
 
+type FileNode struct {
+	FileName     string
+	DownloadPath string
+}
+
+type PackageFiles struct {
+	Nodes []FileNode
+}
+
+type Package struct {
+	Id           string
+	PackageFiles PackageFiles
+}
+
+type GetPackageFilesResult struct {
+	Package Package
+}
+
+const LATEST = "latest"
+const N_A = "NOT FOUND"
+const PAGE_SIZE = 2112
+
+func downloadFile(client *graphql.Client, ctx context.Context, node Node) {
+	log.Info().Interface("package", node).Msg("Downloading")
+	req := graphql.NewRequest(`
+			query getPackageFiles($id: PackagesPackageID!, $first: Int) {
+				package(id: $id) {
+					id
+					packageFiles(first: $first) {
+						nodes {
+							fileName
+							downloadPath
+						}
+					}
+				}
+			}`)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", viper.GetString("token")))
+	req.Var("id", node.Id)
+	req.Var("first", PAGE_SIZE)
+	var res GetPackageFilesResult
+	if err := client.Run(ctx, req, &res); err != nil {
+		log.Fatal().Err(err).Msg("Failed to query packages due to")
+	}
+	log.Debug().Interface("response", res).Msg("Received")
+	if len(res.Package.PackageFiles.Nodes) < 1 {
+		fmt.Println(N_A)
+	}
+	if n, err := json.Marshal(res.Package.PackageFiles.Nodes[0]); err != nil {
+		log.Error().Err(err).Msg("Failed to marshal Node data due to")
+	} else {
+		fmt.Println(string(n))
+	}
+}
+
 func rootRunner(cmd *cobra.Command, args []string) {
-	// versions := []string{"v3.4.0", "v3.11.0", "v4.0.0", "v3.7.0", "v3.8.0", "v3.9.0", "v3.10.0", "v3.12.0"}
-	// semver.Sort(versions)
-	// log.Info().Strs("versions", versions).Send()
 	if len(args) < 1 {
-		log.Fatal().Msg("No package name given!")
+		log.Fatal().Msg("No package data given!")
+		fmt.Println(N_A)
 	}
 	tokenDefined := (len(strings.TrimSpace(viper.GetString("token"))) > 0)
 	log.Info().
 		Str("host", viper.GetString("host")).
 		Bool("token defined", tokenDefined).
-		Int("project", viper.GetInt("project")).Msg("Current config:")
+		Str("project", viper.GetString("project")).Msg("Current config:")
+
+	var packageName string
+	var packageVersion string
+	splitPoint := strings.LastIndex(args[0], "@")
+	if splitPoint < 0 {
+		packageName = args[0]
+		packageVersion = LATEST
+	} else {
+		packageName = args[0][:splitPoint]
+		packageVersion = strings.ToLower(args[0][splitPoint+1:])
+	}
+	log.Debug().Str("name", packageName).Str("version", packageVersion).Msg("Package")
 
 	client := graphql.NewClient(fmt.Sprintf("%s/api/graphql", viper.GetString("host")))
 	req := graphql.NewRequest(`
@@ -65,22 +130,40 @@ func rootRunner(cmd *cobra.Command, args []string) {
 		}`)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", viper.GetString("token")))
 	req.Var("fullPath", viper.GetString("project"))
-	req.Var("packageName", args[0])
+	req.Var("packageName", packageName)
 	req.Var("packageType", "GENERIC")
-	req.Var("first", 2112)
+	req.Var("first", PAGE_SIZE)
 	req.Var("sort", "CREATED_DESC")
 	ctx := context.Background()
 	var res GetPackagesResult
 	if err := client.Run(ctx, req, &res); err != nil {
 		log.Fatal().Err(err).Msg("Failed to query packages due to")
 	}
-	log.Info().Interface("result", res).Msg("Received query")
+	log.Debug().Interface("response", res).Msg("Received")
+
 	versions := []string{}
 	for _, node := range res.Project.Packages.Nodes {
-		log.Info().Interface("node", node).Msg("Found")
+		log.Debug().Interface("node", node).Msg("Found")
+		// Need to prefix with 'v' to get semver.Sort to work.
 		versions = append(versions, fmt.Sprintf("v%s", node.Version))
 	}
-	log.Info().Strs("before", versions).Msg("Versions")
 	semver.Sort(versions)
-	log.Info().Strs("after", versions).Msg("Versions")
+	log.Debug().Strs("sorted", versions).Msg("Versions")
+
+	if packageVersion == LATEST {
+		// [1:] strips the 'v' prefix
+		packageVersion = versions[len(versions)-1][1:]
+	}
+
+	var matchedNode Node
+	for _, node := range res.Project.Packages.Nodes {
+		if node.Version == packageVersion {
+			matchedNode = node
+		}
+	}
+	if (Node{}) == matchedNode {
+		fmt.Println(N_A)
+	} else {
+		downloadFile(client, ctx, matchedNode)
+	}
 }
