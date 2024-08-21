@@ -6,6 +6,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -38,6 +39,20 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		stringToLevel := map[string]zerolog.Level{
+			"panic": zerolog.PanicLevel,
+			"fatal": zerolog.FatalLevel,
+			"error": zerolog.ErrorLevel,
+			"warn":  zerolog.WarnLevel,
+			"info":  zerolog.InfoLevel,
+			"debug": zerolog.DebugLevel,
+			"trace": zerolog.TraceLevel,
+		}
+		levelString := strings.TrimSpace(strings.ToLower(viper.GetString("logging-level")))
+		if len(levelString) == 0 {
+			levelString = "error"
+		}
+		zerolog.SetGlobalLevel(stringToLevel[levelString])
 		zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.StampMilli})
 		return nil
