@@ -72,7 +72,7 @@ func downloadFile(client *graphql.Client, ctx context.Context, node Node) {
 					}
 				}
 			}`)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", viper.GetString("token")))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", viper.GetString(TOKEN)))
 	req.Var("id", node.Id)
 	req.Var("first", PAGE_SIZE)
 	var res GetPackageFilesResult
@@ -95,11 +95,18 @@ func rootRunner(cmd *cobra.Command, args []string) {
 		log.Fatal().Msg("No package data given!")
 		fmt.Println(N_A)
 	}
-	tokenDefined := (len(strings.TrimSpace(viper.GetString("token"))) > 0)
+
+	for _, key := range []string{TOKEN, HOST, PROJECT} {
+		isDefined := (len(strings.TrimSpace(viper.GetString(key))) > 0)
+		if !isDefined {
+			log.Fatal().Msgf("No %s defined in the config file, nor in a SEMCHK-prefixed environment variable! Cannot continue.", key)
+		}
+	}
+
 	log.Info().
-		Str("host", viper.GetString("host")).
-		Bool("token defined", tokenDefined).
-		Str("project", viper.GetString("project")).Msg("Current config:")
+		Str(HOST, viper.GetString(HOST)).
+		Bool("token defined", true).
+		Str(PROJECT, viper.GetString(PROJECT)).Msg("Current config:")
 
 	var packageName string
 	var packageVersion string
@@ -113,7 +120,7 @@ func rootRunner(cmd *cobra.Command, args []string) {
 	}
 	log.Debug().Str("name", packageName).Str("version", packageVersion).Msg("Package")
 
-	client := graphql.NewClient(fmt.Sprintf("%s/api/graphql", viper.GetString("host")))
+	client := graphql.NewClient(fmt.Sprintf("%s/api/graphql", viper.GetString(HOST)))
 	req := graphql.NewRequest(`
 		query getPackages($fullPath: ID!, $packageName: String, $packageType: PackageTypeEnum, $first: Int, $sort: PackageSort) {
 			project(fullPath: $fullPath) {
@@ -128,8 +135,8 @@ func rootRunner(cmd *cobra.Command, args []string) {
 				}
 			}
 		}`)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", viper.GetString("token")))
-	req.Var("fullPath", viper.GetString("project"))
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", viper.GetString(TOKEN)))
+	req.Var("fullPath", viper.GetString(PROJECT))
 	req.Var("packageName", packageName)
 	req.Var("packageType", "GENERIC")
 	req.Var("first", PAGE_SIZE)

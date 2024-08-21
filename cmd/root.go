@@ -16,6 +16,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+const VERBOSE = "verbose"
+const HOST = "host"
+const PROJECT = "project"
+const TOKEN = "token"
+
 var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
@@ -23,7 +28,7 @@ var rootCmd = &cobra.Command{
 	Use:     "semver-checker",
 	Short:   "Search Gitlab for a package based on name and version",
 	Run:     rootRunner,
-	Version: "v1.0.0",
+	Version: "2.0.0",
 	Args:    cobra.MaximumNArgs(1),
 }
 
@@ -58,8 +63,8 @@ func init() {
 		return nil
 	}
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", fmt.Sprintf("config file (default is $HOME/.%s.yaml)", rootCmd.Use))
-	rootCmd.Flags().BoolP("verbose", "V", false, "Show verbose logging")
-	viper.BindPFlag("verbose", rootCmd.Flags().Lookup("verbose"))
+	rootCmd.Flags().BoolP(VERBOSE, "V", false, "Show verbose logging")
+	viper.BindPFlag(VERBOSE, rootCmd.Flags().Lookup(VERBOSE))
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -78,10 +83,10 @@ func initConfig() {
 		viper.SetConfigName(fmt.Sprintf(".%s", rootCmd.Use))
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	// read in environment variables that match
+	viper.SetEnvPrefix("SEMCHK")
+	viper.AutomaticEnv()
 
 	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatal().Err(err).Msg("Config file not found!")
-	}
+	viper.ReadInConfig()
 }
