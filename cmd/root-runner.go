@@ -59,7 +59,7 @@ const N_A = "NOT FOUND"
 const PAGE_SIZE = 2112
 
 func downloadFile(client *graphql.Client, ctx context.Context, node Node) {
-	log.Info().Interface("package", node).Msg("Downloading")
+	log.Info().Interface("package", node).Msg("Get files for")
 	req := graphql.NewRequest(`
 			query getPackageFiles($id: PackagesPackageID!, $first: Int) {
 				package(id: $id) {
@@ -146,6 +146,10 @@ func rootRunner(cmd *cobra.Command, args []string) {
 		log.Debug().Interface("node", node).Msg("Found")
 		// Need to prefix with 'v' to get semver.Sort to work.
 		versions = append(versions, fmt.Sprintf("v%s", node.Version))
+	}
+	if len(versions) < 1 {
+		fmt.Println(N_A)
+		return
 	}
 	semver.Sort(versions)
 	log.Debug().Strs("sorted", versions).Msg("Versions")
