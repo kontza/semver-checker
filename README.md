@@ -7,8 +7,8 @@ This application queries a Gitlab instance for a specific version of a generic p
 1. Set up your `~/.semver-checker.yaml`:
     ```yaml
     host: <GITLAB HOST URL>
-    token: <ACCESS TOKEN WITH REGISTRY READ RIGHTS>
     project: <PATH GROUP/PROJECT WHERE PACKAGES ARE STORED>
+    token: <ACCESS TOKEN WITH REGISTRY READ RIGHTS>
     ```
 2. Or, alternatively define the configuration parameters via environment variables:
     ```sh
