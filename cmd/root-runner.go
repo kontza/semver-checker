@@ -55,10 +55,10 @@ type GetPackageFilesResult struct {
 }
 
 const LATEST = "latest"
-const N_A = "NOT FOUND"
+const N_A = "[]"
 const PAGE_SIZE = 2112
 
-func downloadFile(client *graphql.Client, ctx context.Context, node Node) {
+func getPackageInfo(client *graphql.Client, ctx context.Context, node Node) {
 	log.Info().Interface("package", node).Msg("Get files for")
 	req := graphql.NewRequest(`
 			query getPackageFiles($id: PackagesPackageID!, $first: Int) {
@@ -83,7 +83,7 @@ func downloadFile(client *graphql.Client, ctx context.Context, node Node) {
 	if len(res.Package.PackageFiles.Nodes) < 1 {
 		fmt.Println(N_A)
 	}
-	if n, err := json.Marshal(res.Package.PackageFiles.Nodes[0]); err != nil {
+	if n, err := json.Marshal(res.Package.PackageFiles.Nodes); err != nil {
 		log.Error().Err(err).Msg("Failed to marshal Node data due to")
 	} else {
 		fmt.Println(string(n))
@@ -175,6 +175,6 @@ func rootRunner(cmd *cobra.Command, args []string) {
 	if (Node{}) == matchedNode {
 		fmt.Println(N_A)
 	} else {
-		downloadFile(client, ctx, matchedNode)
+		getPackageInfo(client, ctx, matchedNode)
 	}
 }
