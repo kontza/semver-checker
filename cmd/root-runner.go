@@ -39,6 +39,7 @@ type GetPackagesResult struct {
 type FileNode struct {
 	FileName     string
 	DownloadPath string
+	Url          string
 }
 
 type PackageFiles struct {
@@ -58,7 +59,7 @@ const LATEST = "latest"
 const N_A = "[]"
 const PAGE_SIZE = 2112
 
-func getPackageInfo(client *graphql.Client, ctx context.Context, node Node) {
+func getPackageFiles(client *graphql.Client, ctx context.Context, node Node) {
 	log.Info().Interface("package", node).Msg("Get files for")
 	req := graphql.NewRequest(`
 			query getPackageFiles($id: PackagesPackageID!, $first: Int) {
@@ -80,10 +81,23 @@ func getPackageInfo(client *graphql.Client, ctx context.Context, node Node) {
 		log.Fatal().Err(err).Msg("Failed to query packages due to")
 	}
 	log.Debug().Interface("response", res).Msg("Received")
+	results := []FileNode{}
 	if len(res.Package.PackageFiles.Nodes) < 1 {
 		fmt.Println(N_A)
+	} else {
+		for _, fileNode := range res.Package.PackageFiles.Nodes {
+			fileNode.Url = fmt.Sprintf("%s/api/v4/projects/%s/packages/generic/%s/%s/%s",
+				viper.GetString(HOST),
+				viper.GetString(PROJECT_ID),
+				node.Name,
+				node.Version,
+				fileNode.FileName,
+			)
+			log.Debug().Interface("fileNode", fileNode).Msg("Updated")
+			results = append(results, fileNode)
+		}
 	}
-	if n, err := json.Marshal(res.Package.PackageFiles.Nodes); err != nil {
+	if n, err := json.Marshal(results); err != nil {
 		log.Error().Err(err).Msg("Failed to marshal Node data due to")
 	} else {
 		fmt.Println(string(n))
@@ -96,7 +110,7 @@ func rootRunner(cmd *cobra.Command, args []string) {
 		fmt.Println(N_A)
 	}
 
-	for _, key := range []string{TOKEN, HOST, PROJECT} {
+	for _, key := range []string{TOKEN, HOST, PROJECT, PROJECT_ID} {
 		isDefined := (len(strings.TrimSpace(viper.GetString(key))) > 0)
 		if !isDefined {
 			log.Fatal().Msgf("No %s defined in the config file, nor in a SEMCHK-prefixed environment variable! Cannot continue.", key)
@@ -175,6 +189,6 @@ func rootRunner(cmd *cobra.Command, args []string) {
 	if (Node{}) == matchedNode {
 		fmt.Println(N_A)
 	} else {
-		getPackageInfo(client, ctx, matchedNode)
+		getPackageFiles(client, ctx, matchedNode)
 	}
 }

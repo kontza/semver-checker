@@ -8,12 +8,14 @@ This application queries a Gitlab instance for a specific version of a generic p
     ```yaml
     host: <GITLAB HOST URL>
     project: <PATH GROUP/PROJECT WHERE PACKAGES ARE STORED>
+    project_id: <ID OF THE PROJECT WHERE PACKAGES ARE STORED>
     token: <ACCESS TOKEN WITH REGISTRY READ RIGHTS>
     ```
 2. Or, alternatively define the configuration parameters via environment variables:
     ```sh
     SEMCHK_HOST
     SEMCHK_PROJECT
+    SEMCHK_PROJECT_ID
     SEMCHK_TOKEN
     ```
 4. Build this app.
