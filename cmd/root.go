@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 	Use:     "semver-checker",
 	Short:   "Search Gitlab for a package based on name and version",
 	Run:     rootRunner,
-	Version: "2.2.0",
+	Version: "2.3.0",
 	Args:    cobra.MaximumNArgs(1),
 }
 

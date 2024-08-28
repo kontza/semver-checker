@@ -37,9 +37,10 @@ type GetPackagesResult struct {
 }
 
 type FileNode struct {
-	FileName     string
 	DownloadPath string
+	FileName     string
 	Url          string
+	Version      string
 }
 
 type PackageFiles struct {
@@ -93,6 +94,7 @@ func getPackageFiles(client *graphql.Client, ctx context.Context, node Node) {
 				node.Version,
 				fileNode.FileName,
 			)
+			fileNode.Version = node.Version
 			log.Debug().Interface("fileNode", fileNode).Msg("Updated")
 			results = append(results, fileNode)
 		}
